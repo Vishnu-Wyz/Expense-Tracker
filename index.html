@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Expenses">
+  <meta name="description" content="Track daily expenses by category and payment mode, with budgets and reports.">
+  <title>Expense Tracker</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    try {
+      var t = JSON.parse(localStorage.getItem('et_settings') || '{}').theme;
+      if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+    } catch (e) {}
+  </script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">₹</span>
+      <div>
+        <div class="brand-name">Expense Tracker</div>
+        <div class="brand-sub">Know where it goes</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" data-action="add"><span aria-hidden="true">＋</span> Add expense</button>
+    <nav class="side-nav" aria-label="Main">
+      <button class="nav-link" data-view="dashboard"><span class="nav-ico">🏠</span>Overview</button>
+      <button class="nav-link" data-view="transactions"><span class="nav-ico">🧾</span>Transactions</button>
+      <button class="nav-link" data-view="reports"><span class="nav-ico">📊</span>Reports</button>
+      <button class="nav-link" data-view="categories"><span class="nav-ico">🗂️</span>Categories &amp; Budgets</button>
+      <button class="nav-link" data-view="settings"><span class="nav-ico">⚙️</span>Settings</button>
+    </nav>
+    <p class="side-foot">Your data is stored only on this device.</p>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="viewTitle">Overview</h1>
+        <p class="topbar-sub" id="viewSub"></p>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" data-action="toggle-theme" aria-label="Toggle dark mode" title="Toggle dark mode">◐</button>
+        <button class="icon-btn mobile-only" data-view="settings" aria-label="Settings" title="Settings">⚙️</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- OVERVIEW -->
+      <section class="view" id="view-dashboard">
+        <div class="hero">
+          <div class="hero-top">
+            <div>
+              <div class="hero-eyebrow" id="heroMonth"></div>
+              <div class="hero-amount" id="heroSpent">₹0</div>
+              <div class="hero-sub">spent this month</div>
+            </div>
+            <button class="btn btn-on-hero" data-action="add">＋ Add</button>
+          </div>
+          <div id="heroBudget"></div>
+        </div>
+
+        <div class="kpi-grid" id="dashKpis"></div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><h3>Last 7 days</h3><span class="muted small" id="weekTotal"></span></div>
+            <div class="chart-box h220"><canvas id="chartWeek" role="img" aria-label="Spending over the last 7 days"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>How you paid</h3><span class="muted small">This month</span></div>
+            <div id="dashModes"></div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head"><h3>Top categories</h3><button class="link" data-view="reports">Full report →</button></div>
+            <div id="dashCats"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Recent</h3><button class="link" data-view="transactions">View all →</button></div>
+            <div id="dashRecent"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TRANSACTIONS -->
+      <section class="view" id="view-transactions" hidden>
+        <div class="card filters">
+          <input id="txSearch" class="input search-input" type="search" placeholder="Search description or notes…" autocomplete="off">
+          <div class="filter-row">
+            <label class="select-wrap"><span class="sr-only">Period</span>
+              <select id="txPeriod" class="input">
+                <option value="this-month">This month</option>
+                <option value="last-month">Last month</option>
+                <option value="this-week">This week</option>
+                <option value="last-3-months">Last 3 months</option>
+                <option value="this-year">This year</option>
+                <option value="all">All time</option>
+                <option value="custom">Custom range</option>
+              </select>
+            </label>
+            <label class="select-wrap"><span class="sr-only">Category</span><select id="txCategory" class="input"></select></label>
+            <label class="select-wrap"><span class="sr-only">Payment</span><select id="txMode" class="input"></select></label>
+            <label class="select-wrap"><span class="sr-only">Sort</span>
+              <select id="txSort" class="input">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="highest">Highest amount</option>
+                <option value="lowest">Lowest amount</option>
+              </select>
+            </label>
+          </div>
+          <div class="filter-row" id="txCustom" hidden>
+            <label class="field inline"><span>From</span><input type="date" id="txFrom" class="input"></label>
+            <label class="field inline"><span>To</span><input type="date" id="txTo" class="input"></label>
+          </div>
+        </div>
+        <div class="summary-strip" id="txSummary"></div>
+        <div id="txList"></div>
+      </section>
+
+      <!-- REPORTS -->
+      <section class="view" id="view-reports" hidden>
+        <div class="card report-toolbar">
+          <div class="segmented" id="rpPeriod" role="tablist" aria-label="Report period">
+            <button data-rp="this-month">This month</button>
+            <button data-rp="last-month">Last month</button>
+            <button data-rp="last-3-months">3 months</button>
+            <button data-rp="this-year">This year</button>
+            <button data-rp="all">All time</button>
+            <button data-rp="custom">Custom</button>
+          </div>
+          <div class="toolbar-actions">
+            <button class="btn btn-ghost btn-sm" data-action="report-csv">⬇ CSV</button>
+            <button class="btn btn-ghost btn-sm" data-action="print">🖨 Print</button>
+          </div>
+          <div class="filter-row" id="rpCustom" hidden>
+            <label class="field inline"><span>From</span><input type="date" id="rpFrom" class="input"></label>
+            <label class="field inline"><span>To</span><input type="date" id="rpTo" class="input"></label>
+          </div>
+        </div>
+
+        <p class="range-label" id="rpRange"></p>
+        <div class="kpi-grid" id="rpKpis"></div>
+
+        <div id="rpEmpty" hidden></div>
+        <div id="rpBody">
+          <div class="card insights">
+            <div class="card-head"><h3>💡 Insights</h3></div>
+            <ul id="rpInsights"></ul>
+          </div>
+
+          <div class="grid-2 wide-left">
+            <div class="card">
+              <div class="card-head"><h3>Where the money went</h3></div>
+              <div class="chart-box h280"><canvas id="chartCat" role="img" aria-label="Spending share by category"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Category breakdown</h3><span class="muted small" id="rpCatHint"></span></div>
+              <div class="table-scroll" id="rpCatTable"></div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h3>Cash vs Online vs Card</h3></div>
+              <div id="rpGroups"></div>
+              <h4 class="sub-head">By payment method</h4>
+              <div class="table-scroll" id="rpModes"></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Category × payment</h3><span class="muted small">Darker = more spent</span></div>
+              <div class="table-scroll" id="rpMatrix"></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3 id="rpTrendTitle">Spending trend</h3><span class="muted small" id="rpTrendHint"></span></div>
+            <div class="chart-box h280"><canvas id="chartTrend" role="img" aria-label="Spending trend"></canvas></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-head"><h3>By day of week</h3></div>
+              <div class="chart-box h240"><canvas id="chartDow" role="img" aria-label="Spending by day of week"></canvas></div>
+            </div>
+            <div class="card">
+              <div class="card-head"><h3>Largest expenses</h3></div>
+              <div id="rpTop"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Month by month</h3><span class="muted small">Last 12 months</span></div>
+          <div class="chart-box h260"><canvas id="chartMonths" role="img" aria-label="Monthly spending for the last 12 months"></canvas></div>
+        </div>
+      </section>
+
+      <!-- CATEGORIES -->
+      <section class="view" id="view-categories" hidden>
+        <div class="card budget-card">
+          <div class="card-head"><h3>Monthly budget</h3><span class="muted small" id="budgetHint"></span></div>
+          <form class="budget-form" id="budgetForm">
+            <label class="amount-inline"><span>₹</span><input id="budgetInput" class="input" type="number" inputmode="decimal" min="0" step="1" placeholder="e.g. 30000"></label>
+            <button class="btn btn-primary" type="submit">Save budget</button>
+          </form>
+          <div id="budgetSummary"></div>
+        </div>
+
+        <div class="section-head">
+          <h3>Categories</h3>
+          <button class="btn btn-ghost btn-sm" data-action="add-category">＋ New category</button>
+        </div>
+        <p class="muted small section-note">Tap a category to rename it, change its icon or colour, or give it its own monthly budget.</p>
+        <div class="cat-grid" id="catGrid"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings" hidden>
+        <div class="card">
+          <div class="card-head"><h3>Appearance</h3></div>
+          <div class="segmented" id="themeSeg">
+            <button data-theme-set="system">System</button>
+            <button data-theme-set="light">Light</button>
+            <button data-theme-set="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Backup &amp; export</h3></div>
+          <p class="muted small">Your expenses live in this browser only. Download a backup regularly, and use it to move your data to another phone or computer.</p>
+          <div class="settings-list">
+            <button class="settings-item" data-action="backup"><span>💾</span><span><strong>Download backup</strong><small>JSON file with everything</small></span></button>
+            <label class="settings-item" for="importFile"><span>📂</span><span><strong>Restore from backup</strong><small>Replaces the data on this device</small></span></label>
+            <input type="file" id="importFile" accept="application/json,.json" hidden>
+            <button class="settings-item" data-action="all-csv"><span>📄</span><span><strong>Export all as CSV</strong><small>Open in Excel or Google Sheets</small></span></button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>Data</h3></div>
+          <div class="settings-list">
+            <button class="settings-item" data-action="sample" id="sampleBtn"><span>✨</span><span><strong>Load sample data</strong><small>See how the reports look with 3 months of example spending</small></span></button>
+            <button class="settings-item" data-action="remove-sample" id="removeSampleBtn" hidden><span>🧹</span><span><strong>Remove sample data</strong><small>Keeps the expenses you entered yourself</small></span></button>
+            <button class="settings-item danger" data-action="wipe"><span>🗑️</span><span><strong>Delete all data</strong><small>Expenses, categories and budget — cannot be undone</small></span></button>
+          </div>
+        </div>
+        <p class="muted small center" id="statsLine"></p>
+      </section>
+    </main>
+  </div>
+
+  <nav class="bottom-nav" aria-label="Main">
+    <button data-view="dashboard"><span>🏠</span>Home</button>
+    <button data-view="transactions"><span>🧾</span>History</button>
+    <button class="fab" data-action="add" aria-label="Add expense">＋</button>
+    <button data-view="reports"><span>📊</span>Reports</button>
+    <button data-view="categories"><span>🗂️</span>Budgets</button>
+  </nav>
+</div>
+
+<!-- Expense sheet -->
+<div class="sheet-wrap" id="expenseSheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <form class="sheet" id="expenseForm" novalidate role="dialog" aria-modal="true" aria-labelledby="expenseSheetTitle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2 id="expenseSheetTitle">Add expense</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <label class="amount-field">
+        <span class="currency">₹</span>
+        <input id="fAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" aria-label="Amount">
+      </label>
+
+      <div class="field-label">Category</div>
+      <div class="chip-grid" id="fCategories"></div>
+
+      <div class="field-label">Paid with</div>
+      <div class="mode-grid" id="fModes"></div>
+
+      <div class="field-label">Date</div>
+      <div class="date-row">
+        <input type="date" id="fDate" class="input">
+        <button type="button" class="pill" data-date="0">Today</button>
+        <button type="button" class="pill" data-date="-1">Yesterday</button>
+      </div>
+
+      <label class="field"><span>Description</span><input id="fDesc" class="input" maxlength="80" placeholder="e.g. Lunch with team" autocomplete="off"></label>
+      <label class="field"><span>Notes <em>(optional)</em></span><textarea id="fNotes" class="input" rows="2" maxlength="300"></textarea></label>
+      <p class="form-error" id="fError" role="alert" hidden></p>
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-danger-ghost" id="fDelete" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost" id="fSaveAnother">Save &amp; add another</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<!-- Category sheet -->
+<div class="sheet-wrap" id="categorySheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <form class="sheet" id="categoryForm" novalidate role="dialog" aria-modal="true" aria-labelledby="categorySheetTitle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <h2 id="categorySheetTitle">New category</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Close">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div class="cat-preview"><span class="cat-icon lg" id="cPreview">📌</span></div>
+      <label class="field"><span>Name</span><input id="cName" class="input" maxlength="30" placeholder="e.g. Pets" autocomplete="off"></label>
+      <label class="field"><span>Icon (any emoji)</span><input id="cIcon" class="input" maxlength="8" placeholder="🐶"></label>
+      <div class="emoji-row" id="cEmojiRow"></div>
+      <div class="field-label">Colour</div>
+      <div class="swatches" id="cSwatches"></div>
+      <label class="field"><span>Monthly budget <em>(optional)</em></span><input id="cBudget" class="input" type="number" inputmode="decimal" min="0" step="1" placeholder="No limit"></label>
+      <p class="form-error" id="cError" role="alert" hidden></p>
+    </div>
+    <div class="sheet-foot">
+      <button type="button" class="btn btn-danger-ghost" id="cDelete" hidden>Delete</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
